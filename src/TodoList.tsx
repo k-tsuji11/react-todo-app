@@ -1,3 +1,4 @@
+
 import type { Todo } from "./types";
 import TodoItem from "./TodoItem";
 
@@ -8,18 +9,17 @@ type Props = {
 };
 
 const TodoList = (props: Props) => {
-  const todos = props.todos;
-  if (todos.length === 0) {
+  if (props.todos.length === 0) {
     return (
-      <div className="text-red-500">
-        現在、登録されているタスクはありません。
-      </div>
+      <p className="rounded-2xl bg-white p-6 text-center text-purple-400">
+        健康習慣がまだ登録されていません。
+      </p>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      {todos.map((todo) => (
+    <div className="flex flex-col gap-3">
+      {props.todos.map((todo) => (
         <TodoItem
           key={todo.id}
           todo={todo}

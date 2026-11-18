@@ -1,241 +1,297 @@
-import { useState, useEffect } from "react";
-import type { ChangeEvent } from "react";
-import type { Todo } from "./types";
-import { initTodos } from "./initTodos";
-import WelcomeMessage from "./WelcomeMessage";
-import TodoList from "./TodoList";
+
+import { useEffect, useState } from "react";
 import { v4 as uuid } from "uuid";
-import { twMerge } from "tailwind-merge";
-import dayjs from "dayjs";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import type { Todo, DailyRecord, HabitCategory } from "./types";
+import { initTodos } from "./initTodos";
+import TodoList from "./TodoList";
 
-const localStorageKey = "TodoApp";
+const habitKey = "WellnessNoteHabits";
+const recordKey = "WellnessNoteRecords";
 
-type StoredTodo = {
-  id: string;
-  name: string;
-  isDone: boolean;
-  priority: number;
-  deadline: string | null;
+const today = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
-const loadTodos = (): Todo[] => {
-  const todoJsonStr = localStorage.getItem(localStorageKey);
-  if (todoJsonStr === null) {
+const createRecord = (date: string): DailyRecord => ({
+  date,
+  water: 0,
+  sleep: 0,
+  mood: "",
+  exercise: 0,
+  mealNote: "",
+});
+
+const loadHabits = (): Todo[] => {
+  try {
+    const saved = localStorage.getItem(habitKey);
+    if (!saved) return initTodos;
+
+    return JSON.parse(saved).map((item: Todo) => ({
+      ...item,
+      category: item.category || "その他",
+      completedAt: item.completedAt || null,
+      deadline: item.deadline ? new Date(item.deadline) : null,
+    }));
+  } catch {
     return initTodos;
   }
-
-  const storedTodos: StoredTodo[] = JSON.parse(todoJsonStr);
-  return storedTodos.map((todo) => ({
-    ...todo,
-    deadline: todo.deadline === null ? null : new Date(todo.deadline),
-  }));
 };
 
-const getTodoNameError = (name: string): string => {
-  const trimmedName = name.trim();
-  if (trimmedName.length < 2 || trimmedName.length > 32) {
-    return "前後の空白を除いて、2文字以上、32文字以内で入力してください";
+const loadRecords = (): Record<string, DailyRecord> => {
+  try {
+    return JSON.parse(localStorage.getItem(recordKey) || "{}");
+  } catch {
+    return {};
   }
-  return "";
 };
 
 const App = () => {
-  const [todos, setTodos] = useState<Todo[]>(loadTodos);
-  const [newTodoName, setNewTodoName] = useState("");
-  const [newTodoPriority, setNewTodoPriority] = useState(3);
-  const [newTodoDeadline, setNewTodoDeadline] = useState<Date | null>(null);
-  const [isNameTouched, setIsNameTouched] = useState(false);
+  const [todos, setTodos] = useState<Todo[]>(loadHabits);
+  const [records, setRecords] = useState<Record<string, DailyRecord>>(loadRecords);
 
-  const uncompletedCount = todos.filter((todo) => !todo.isDone).length;
-  const completedCount = todos.length - uncompletedCount;
-  const newTodoNameError = getTodoNameError(newTodoName);
-  const isNewTodoNameInvalid = newTodoNameError !== "";
-  const showNewTodoNameError = isNameTouched && isNewTodoNameInvalid;
+  const [newName, setNewName] = useState("");
+  const [newCategory, setNewCategory] = useState<HabitCategory>("生活習慣");
+
+  const date = today();
+  const current = records[date] || createRecord(date);
+
+  const completed = todos.filter((todo) => todo.isDone).length;
+  const progress = todos.length
+    ? Math.round((completed / todos.length) * 100)
+    : 0;
 
   useEffect(() => {
-    localStorage.setItem(localStorageKey, JSON.stringify(todos));
+    localStorage.setItem(habitKey, JSON.stringify(todos));
   }, [todos]);
 
-  const updateNewTodoName = (e: ChangeEvent<HTMLInputElement>) => {
-    setNewTodoName(e.target.value);
-    setIsNameTouched(true);
+  useEffect(() => {
+    localStorage.setItem(recordKey, JSON.stringify(records));
+  }, [records]);
+
+  const updateRecord = (changes: Partial<DailyRecord>) => {
+    setRecords((old) => ({
+      ...old,
+      [date]: {
+        ...(old[date] || createRecord(date)),
+        ...changes,
+      },
+    }));
   };
 
-  const updateNewTodoPriority = (e: ChangeEvent<HTMLInputElement>) => {
-    setNewTodoPriority(Number(e.target.value));
-  };
+  const addHabit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-  const updateDeadline = (e: ChangeEvent<HTMLInputElement>) => {
-    const dt = e.target.value;
-    setNewTodoDeadline(dt === "" ? null : new Date(dt));
-  };
-
-  const addNewTodo = () => {
-    if (isNewTodoNameInvalid) {
-      setIsNameTouched(true);
-      return;
-    }
+    const name = newName.trim();
+    if (name.length < 2 || name.length > 32) return;
 
     const newTodo: Todo = {
       id: uuid(),
-      name: newTodoName.trim(),
+      name,
       isDone: false,
-      priority: newTodoPriority,
-      deadline: newTodoDeadline,
+      priority: 2,
+      deadline: null,
+      category: newCategory,
+      completedAt: null,
     };
-    setTodos((currentTodos) => [...currentTodos, newTodo]);
-    setNewTodoName("");
-    setNewTodoPriority(3);
-    setNewTodoDeadline(null);
-    setIsNameTouched(false);
+
+    setTodos((old) => [...old, newTodo]);
+    setNewName("");
   };
 
   const updateIsDone = (id: string, value: boolean) => {
-    setTodos((currentTodos) =>
-      currentTodos.map((todo) => {
-        if (todo.id === id) {
-          return { ...todo, isDone: value };
-        } else {
-          return todo;
-        }
-      }),
+    setTodos((old) =>
+      old.map((todo) =>
+        todo.id === id
+          ? {
+              ...todo,
+              isDone: value,
+              completedAt: value ? date : null,
+            }
+          : todo
+      )
     );
   };
 
-  const removeCompletedTodos = () => {
-    setTodos((currentTodos) => currentTodos.filter((todo) => !todo.isDone));
+  const remove = (id: string) => {
+    setTodos((old) => old.filter((todo) => todo.id !== id));
   };
 
-  const remove = (id: string) => {
-    setTodos((currentTodos) => currentTodos.filter((todo) => todo.id !== id));
-  };
+  const lastSevenDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return {
+      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+      label: `${d.getMonth() + 1}/${d.getDate()}`,
+    };
+  });
 
   return (
-    <div className="mx-4 mt-10 max-w-2xl md:mx-auto">
-      <h1 className="mb-4 text-2xl font-bold">TodoApp</h1>
-      <div className="mb-4">
-        <WelcomeMessage
-          name="寝屋川タヌキ"
-          uncompletedCount={uncompletedCount}
-        />
-      </div>
-      <TodoList todos={todos} updateIsDone={updateIsDone} remove={remove} />
+    <main className="min-h-screen bg-[#F8F5FC] px-4 py-8 text-slate-700">
+      <div className="mx-auto max-w-3xl space-y-6">
 
-      <button
-        type="button"
-        onClick={removeCompletedTodos}
-        disabled={completedCount === 0}
-        className={twMerge(
-          "mt-4 cursor-pointer rounded-md px-3 py-1 font-medium",
-          "bg-rose-500 text-white hover:bg-rose-600",
-          "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-rose-500",
-        )}
-      >
-        完了済みのタスクを削除
-      </button>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          addNewTodo();
-        }}
-        aria-labelledby="newTodoHeading"
-        className="mt-4 space-y-2 rounded-md border border-slate-300 bg-white p-3 drop-shadow"
-      >
-        <h2 id="newTodoHeading" className="text-lg font-bold">
-          新しいタスクの追加
-        </h2>
-
-        <div>
-          <div className="flex items-center space-x-2">
-            <label className="font-bold" htmlFor="newTodoName">
-              名前
-            </label>
-            <input
-              id="newTodoName"
-              name="todoName"
-              type="text"
-              required
-              value={newTodoName}
-              onChange={updateNewTodoName}
-              aria-invalid={showNewTodoNameError}
-              aria-describedby={
-                showNewTodoNameError ? "newTodoNameError" : undefined
-              }
-              className={twMerge(
-                "min-w-0 grow rounded-md border border-gray-300 p-2",
-                showNewTodoNameError && "border-red-500 outline-red-500",
-              )}
-              placeholder="2文字以上、32文字以内で入力してください"
-            />
+        <header className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium tracking-widest text-purple-400">
+              MY DAILY WELLNESS
+            </p>
+            <h1 className="text-3xl font-bold text-purple-900">
+              Wellness Note ♡
+            </h1>
+            <p className="mt-1 text-sm text-purple-400">
+              小さな習慣から、毎日を心地よく。
+            </p>
           </div>
-          {showNewTodoNameError && (
-            <div
-              id="newTodoNameError"
-              aria-live="polite"
-              className="ml-10 flex items-center space-x-1 text-sm font-medium text-red-500"
-            >
-              <FontAwesomeIcon
-                icon={faTriangleExclamation}
-                className="mr-0.5"
-              />
-              <div>{newTodoNameError}</div>
+          <div className="rounded-2xl bg-purple-100 p-4 text-3xl">
+            ♡
+          </div>
+        </header>
+
+        <section className="rounded-3xl bg-gradient-to-r from-purple-300 to-purple-400 p-6 text-white shadow-sm">
+          <p className="text-sm opacity-90">TODAY'S MESSAGE</p>
+          <h2 className="mt-2 text-2xl font-bold">
+            今日も自分のペースで。
+          </h2>
+          <p className="mt-2 text-sm opacity-90">
+            無理せず、できることから始めよう。
+          </p>
+          <p className="mt-4 text-sm">
+            {date.replaceAll("-", "/")}
+          </p>
+        </section>
+
+        <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {[
+            { label: "水分補給", value: `${current.water} 杯`, icon: "💧" },
+            { label: "睡眠時間", value: `${current.sleep} 時間`, icon: "🌙" },
+            { label: "運動時間", value: `${current.exercise} 分`, icon: "🚶" },
+            { label: "今日の気分", value: current.mood || "未記録", icon: "🌷" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-2xl border border-purple-100 bg-white p-4 shadow-sm">
+              <p className="text-2xl">{item.icon}</p>
+              <p className="mt-2 text-xs text-purple-400">{item.label}</p>
+              <p className="mt-1 font-bold text-purple-900">{item.value}</p>
             </div>
-          )}
-        </div>
+          ))}
+        </section>
 
-        <fieldset>
-          <legend className="mb-1 font-bold">優先度</legend>
-          <div className="flex gap-5">
-            {[1, 2, 3].map((value) => (
-              <label key={value} className="flex items-center space-x-1">
-                <input
-                  id={`priority-${value}`}
-                  name="priorityGroup"
-                  type="radio"
-                  value={value}
-                  checked={newTodoPriority === value}
-                  onChange={updateNewTodoPriority}
-                />
-                <span>{value}</span>
-              </label>
-            ))}
+        <section className="rounded-3xl border border-purple-100 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-purple-900">
+            🌸 今日の健康記録
+          </h2>
+
+          <div className="mt-5 space-y-5">
+            <div>
+              <div className="flex justify-between">
+                <label className="font-medium">💧 水分補給</label>
+                <span className="text-sm text-purple-500">{current.water} 杯</span>
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <button type="button" onClick={() => updateRecord({ water: Math.max(0, current.water - 1) })} className="rounded-xl bg-purple-100 px-4 py-2 text-purple-700">−</button>
+                <div className="flex-1 rounded-full bg-purple-50 py-2 text-center text-sm text-purple-500">
+                  今日の水分量を記録
+                </div>
+                <button type="button" onClick={() => updateRecord({ water: current.water + 1 })} className="rounded-xl bg-purple-500 px-4 py-2 text-white">＋</button>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="sleep" className="font-medium">🌙 睡眠時間</label>
+              <div className="mt-2 flex items-center gap-2">
+                <input id="sleep" type="number" min="0" max="24" step="0.5" value={current.sleep} onChange={(e) => updateRecord({ sleep: Math.min(24, Math.max(0, Number(e.target.value))) })} className="w-full rounded-xl border border-purple-100 p-3 outline-purple-300" />
+                <span>時間</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-medium">😊 今日の気分</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {["😊", "🙂", "😐", "😴", "😔"].map((mood) => (
+                  <button key={mood} type="button" onClick={() => updateRecord({ mood })} className={`rounded-xl p-3 text-2xl ${current.mood === mood ? "bg-purple-200 ring-2 ring-purple-400" : "bg-purple-50"}`}>
+                    {mood}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="exercise" className="font-medium">🚶 運動時間</label>
+              <div className="mt-2 flex items-center gap-2">
+                <input id="exercise" type="number" min="0" value={current.exercise} onChange={(e) => updateRecord({ exercise: Math.max(0, Number(e.target.value)) })} className="w-full rounded-xl border border-purple-100 p-3 outline-purple-300" />
+                <span>分</span>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="meal" className="font-medium">🍽️ 食事メモ</label>
+              <textarea id="meal" value={current.mealNote} onChange={(e) => updateRecord({ mealNote: e.target.value })} placeholder="今日食べたものや気づいたこと..." className="mt-2 w-full rounded-xl border border-purple-100 p-3 outline-purple-300" rows={3} />
+            </div>
           </div>
-        </fieldset>
+        </section>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="font-bold" htmlFor="deadline">
-            期限
-          </label>
-          <input
-            type="datetime-local"
-            id="deadline"
-            name="deadline"
-            value={
-              newTodoDeadline
-                ? dayjs(newTodoDeadline).format("YYYY-MM-DDTHH:mm:ss")
-                : ""
-            }
-            onChange={updateDeadline}
-            className="max-w-full min-w-0 rounded-md border border-gray-300 px-2 py-0.5"
-          />
-        </div>
+        <section className="rounded-3xl border border-purple-100 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-purple-900">♡ 健康習慣リスト</h2>
 
-        <button
-          type="submit"
-          disabled={isNewTodoNameInvalid}
-          className={twMerge(
-            "cursor-pointer rounded-md px-3 py-1",
-            "bg-indigo-500 font-bold text-white hover:bg-indigo-600",
-            "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-500",
-          )}
-        >
-          追加
-        </button>
-      </form>
-    </div>
+          <div className="mt-4">
+            <div className="flex justify-between text-sm">
+              <span>今日の達成率</span>
+              <span className="font-bold text-purple-600">{progress}%</span>
+            </div>
+            <div className="mt-2 h-3 overflow-hidden rounded-full bg-purple-100">
+              <div className="h-full rounded-full bg-purple-400 transition-all" style={{ width: `${progress}%` }} />
+            </div>
+            <p className="mt-2 text-xs text-purple-400">{completed} / {todos.length} 件完了</p>
+          </div>
+
+          <form onSubmit={addHabit} className="mt-5 space-y-3">
+            <input value={newName} onChange={(e) => setNewName(e.target.value)} minLength={2} maxLength={32} required placeholder="新しい健康習慣を入力..." className="w-full rounded-xl border border-purple-100 p-3 outline-purple-300" />
+            <div className="flex flex-wrap gap-2">
+              <select value={newCategory} onChange={(e) => setNewCategory(e.target.value as HabitCategory)} className="flex-1 rounded-xl border border-purple-100 p-3">
+                <option value="生活習慣">生活習慣</option>
+                <option value="運動">運動</option>
+                <option value="食事">食事</option>
+                <option value="その他">その他</option>
+              </select>
+              <button type="submit" className="rounded-xl bg-purple-500 px-5 py-3 font-bold text-white hover:bg-purple-600">
+                ＋ 追加
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-5">
+            <TodoList todos={todos} updateIsDone={updateIsDone} remove={remove} />
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-purple-100 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-purple-900">📊 1週間の記録</h2>
+          <p className="mt-1 text-xs text-purple-400">毎日の水分補給の記録</p>
+          <div className="mt-5 flex h-40 items-end justify-around gap-2">
+            {lastSevenDays.map((day) => {
+              const amount = records[day.date]?.water || 0;
+              const height = Math.min(100, amount * 12);
+              return (
+                <div key={day.date} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
+                  <span className="text-xs text-purple-500">{amount}</span>
+                  <div className="flex h-28 w-full items-end justify-center">
+                    <div className="w-full max-w-8 rounded-t-xl bg-purple-300" style={{ height: `${height}%` }} />
+                  </div>
+                  <span className="text-xs text-purple-400">{day.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <footer className="pb-4 text-center text-xs text-purple-400">
+          Wellness Note ♡ Take care of yourself.
+        </footer>
+
+      </div>
+    </main>
   );
 };
 

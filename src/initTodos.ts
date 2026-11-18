@@ -1,33 +1,41 @@
+
 import type { Todo } from "./types";
-import { v4 as uuid } from "uuid"; // v4 を uuid という名前でインポート
 
 export const initTodos: Todo[] = [
   {
-    id: uuid(), // UUID v4 を生成してIDにセット
-    name: "解析2の宿題",
+    id: "habit-1",
+    name: "水分補給をする",
     isDone: false,
-    priority: 2,
-    deadline: new Date(2026, 10, 2, 17, 30),
-  },
-  {
-    id: uuid(),
-    name: "TypeScriptの勉強 (復習)",
-    isDone: true,
     priority: 3,
-    deadline: null, // このTodoには期限を設定しない
+    deadline: null,
+    category: "生活習慣",
+    completedAt: null,
   },
   {
-    id: uuid(),
-    name: "基礎物理学3の宿題",
+    id: "habit-2",
+    name: "軽いストレッチをする",
     isDone: false,
-    priority: 1,
-    deadline: new Date(2026, 10, 11),
-  },
-  {
-    id: uuid(),
-    name: "図書の返却",
-    isDone: true,
     priority: 2,
     deadline: null,
+    category: "運動",
+    completedAt: null,
+  },
+  {
+    id: "habit-3",
+    name: "朝食を記録する",
+    isDone: false,
+    priority: 2,
+    deadline: null,
+    category: "食事",
+    completedAt: null,
+  },
+  {
+    id: "habit-4",
+    name: "ゆっくり休む時間を作る",
+    isDone: false,
+    priority: 1,
+    deadline: null,
+    category: "生活習慣",
+    completedAt: null,
   },
 ];
