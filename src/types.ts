@@ -1,9 +1,5 @@
 
-export type HabitCategory =
-  | "運動"
-  | "食事"
-  | "生活習慣"
-  | "その他";
+export type HabitCategory = "運動" | "食事" | "生活習慣" | "その他";
 
 export type Todo = {
   id: string;

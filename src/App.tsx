@@ -1,22 +1,23 @@
 
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { v4 as uuid } from "uuid";
 import type { Todo, DailyRecord, HabitCategory } from "./types";
 import { initTodos } from "./initTodos";
-import TodoList from "./TodoList";
 
-const habitKey = "WellnessNoteHabits";
-const recordKey = "WellnessNoteRecords";
+const HABITS_KEY = "WellnessNoteHabits";
+const RECORDS_KEY = "WellnessNoteRecords";
 
-const today = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const dateKey = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 };
 
-const createRecord = (date: string): DailyRecord => ({
+const today = dateKey(new Date());
+
+const emptyRecord = (date: string): DailyRecord => ({
   date,
   water: 0,
   sleep: 0,
@@ -26,15 +27,15 @@ const createRecord = (date: string): DailyRecord => ({
 });
 
 const loadHabits = (): Todo[] => {
-  try {
-    const saved = localStorage.getItem(habitKey);
-    if (!saved) return initTodos;
+  const saved = localStorage.getItem(HABITS_KEY);
+  if (!saved) return initTodos;
 
-    return JSON.parse(saved).map((item: Todo) => ({
-      ...item,
-      category: item.category || "その他",
-      completedAt: item.completedAt || null,
-      deadline: item.deadline ? new Date(item.deadline) : null,
+  try {
+    return JSON.parse(saved).map((habit: Todo) => ({
+      ...habit,
+      deadline: habit.deadline ? new Date(habit.deadline) : null,
+      category: habit.category || "その他",
+      completedAt: habit.completedAt || null,
     }));
   } catch {
     return initTodos;
@@ -43,255 +44,539 @@ const loadHabits = (): Todo[] => {
 
 const loadRecords = (): Record<string, DailyRecord> => {
   try {
-    return JSON.parse(localStorage.getItem(recordKey) || "{}");
+    return JSON.parse(localStorage.getItem(RECORDS_KEY) || "{}");
   } catch {
     return {};
   }
 };
 
+const cardStyle: React.CSSProperties = {
+  background: "#ffffff",
+  border: "1px solid #f3e3ed",
+  borderRadius: "22px",
+  padding: "22px",
+  boxShadow: "0 5px 18px rgba(190, 145, 175, 0.08)",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  border: "1px solid #ead9e8",
+  borderRadius: "12px",
+  padding: "12px",
+  fontSize: "15px",
+  background: "#fffafd",
+  color: "#55475a",
+  outlineColor: "#d9a9ca",
+};
+
+const buttonStyle: React.CSSProperties = {
+  border: "none",
+  borderRadius: "12px",
+  padding: "10px 16px",
+  background: "#f3e2ef",
+  color: "#805b79",
+  fontWeight: 600,
+  cursor: "pointer",
+  fontSize: "15px",
+};
+
 const App = () => {
-  const [todos, setTodos] = useState<Todo[]>(loadHabits);
+  const [habits, setHabits] = useState<Todo[]>(loadHabits);
   const [records, setRecords] = useState<Record<string, DailyRecord>>(loadRecords);
+  const [habitName, setHabitName] = useState("");
+  const [category, setCategory] = useState<HabitCategory>("生活習慣");
 
-  const [newName, setNewName] = useState("");
-  const [newCategory, setNewCategory] = useState<HabitCategory>("生活習慣");
+  const record = records[today] || emptyRecord(today);
 
-  const date = today();
-  const current = records[date] || createRecord(date);
-
-  const completed = todos.filter((todo) => todo.isDone).length;
-  const progress = todos.length
-    ? Math.round((completed / todos.length) * 100)
-    : 0;
-
-  useEffect(() => {
-    localStorage.setItem(habitKey, JSON.stringify(todos));
-  }, [todos]);
-
-  useEffect(() => {
-    localStorage.setItem(recordKey, JSON.stringify(records));
-  }, [records]);
-
-  const updateRecord = (changes: Partial<DailyRecord>) => {
-    setRecords((old) => ({
-      ...old,
-      [date]: {
-        ...(old[date] || createRecord(date)),
-        ...changes,
+  const updateRecord = (values: Partial<DailyRecord>) => {
+    setRecords((current) => ({
+      ...current,
+      [today]: {
+        ...(current[today] || emptyRecord(today)),
+        ...values,
       },
     }));
   };
 
-  const addHabit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  useEffect(() => {
+    localStorage.setItem(HABITS_KEY, JSON.stringify(habits));
+  }, [habits]);
 
-    const name = newName.trim();
+  useEffect(() => {
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+  }, [records]);
+
+  const toggleHabit = (id: string) => {
+    setHabits((current) =>
+      current.map((habit) =>
+        habit.id === id ? { ...habit, isDone: !habit.isDone } : habit,
+      ),
+    );
+  };
+
+  const addHabit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = habitName.trim();
+
     if (name.length < 2 || name.length > 32) return;
 
-    const newTodo: Todo = {
+    const newHabit: Todo = {
       id: uuid(),
       name,
       isDone: false,
       priority: 2,
       deadline: null,
-      category: newCategory,
+      category,
       completedAt: null,
     };
 
-    setTodos((old) => [...old, newTodo]);
-    setNewName("");
+    setHabits((current) => [...current, newHabit]);
+    setHabitName("");
   };
 
-  const updateIsDone = (id: string, value: boolean) => {
-    setTodos((old) =>
-      old.map((todo) =>
-        todo.id === id
-          ? {
-              ...todo,
-              isDone: value,
-              completedAt: value ? date : null,
-            }
-          : todo
-      )
-    );
+  const deleteHabit = (id: string) => {
+    setHabits((current) => current.filter((habit) => habit.id !== id));
   };
 
-  const remove = (id: string) => {
-    setTodos((old) => old.filter((todo) => todo.id !== id));
-  };
+  const completedCount = habits.filter((habit) => habit.isDone).length;
+  const progress =
+    habits.length === 0 ? 0 : Math.round((completedCount / habits.length) * 100);
 
-  const lastSevenDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
+  const weekData = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    const key = dateKey(date);
     return {
-      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
-      label: `${d.getMonth() + 1}/${d.getDate()}`,
+      label: `${date.getMonth() + 1}/${date.getDate()}`,
+      water: records[key]?.water || 0,
     };
   });
 
-  return (
-    <main className="min-h-screen bg-[#F8F5FC] px-4 py-8 text-slate-700">
-      <div className="mx-auto max-w-3xl space-y-6">
+  const maxWater = Math.max(5, ...weekData.map((day) => day.water));
 
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium tracking-widest text-purple-400">
-              MY DAILY WELLNESS
-            </p>
-            <h1 className="text-3xl font-bold text-purple-900">
-              Wellness Note ♡
-            </h1>
-            <p className="mt-1 text-sm text-purple-400">
-              小さな習慣から、毎日を心地よく。
-            </p>
-          </div>
-          <div className="rounded-2xl bg-purple-100 p-4 text-3xl">
-            ♡
-          </div>
+  const moodOptions = [
+    { value: "元気", emoji: "😊" },
+    { value: "普通", emoji: "😐" },
+    { value: "疲れた", emoji: "😴" },
+  ];
+
+  const categories: HabitCategory[] = [
+    "運動",
+    "食事",
+    "生活習慣",
+    "その他",
+  ];
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #fff7fb 0%, #f7f2ff 100%)",
+        color: "#55475a",
+        padding: "35px 18px 60px",
+        fontFamily: '"Noto Sans JP", sans-serif',
+      }}
+    >
+      <main style={{ maxWidth: "1000px", margin: "0 auto" }}>
+        {/* ヘッダー */}
+        <header style={{ textAlign: "center", marginBottom: "32px" }}>
+          <p
+            style={{
+              color: "#b18aa9",
+              letterSpacing: "3px",
+              fontSize: "13px",
+              fontWeight: 600,
+            }}
+          >
+            YOUR DAILY WELLNESS JOURNAL
+          </p>
+
+          <h1
+            style={{
+              fontSize: "clamp(32px, 6vw, 48px)",
+              color: "#59465d",
+              margin: "8px 0",
+              fontWeight: 800,
+            }}
+          >
+            Wellness Note <span style={{ color: "#d99cbd" }}>♡</span>
+          </h1>
+
+          <p style={{ color: "#987b9c", fontSize: "16px" }}>
+            {new Date().toLocaleDateString("ja-JP", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              weekday: "short",
+            })}
+          </p>
+          <p style={{ margin: "12px 0 4px", fontSize: "18px", fontWeight: 700 }}>
+            今日も自分を大切に。
+          </p>
+          <p style={{ color: "#9c879d", margin: 0 }}>
+            小さな習慣を記録して、毎日の変化を楽しもう。
+          </p>
         </header>
 
-        <section className="rounded-3xl bg-gradient-to-r from-purple-300 to-purple-400 p-6 text-white shadow-sm">
-          <p className="text-sm opacity-90">TODAY'S MESSAGE</p>
-          <h2 className="mt-2 text-2xl font-bold">
-            今日も自分のペースで。
-          </h2>
-          <p className="mt-2 text-sm opacity-90">
-            無理せず、できることから始めよう。
-          </p>
-          <p className="mt-4 text-sm">
-            {date.replaceAll("-", "/")}
-          </p>
-        </section>
-
-        <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {[
-            { label: "水分補給", value: `${current.water} 杯`, icon: "💧" },
-            { label: "睡眠時間", value: `${current.sleep} 時間`, icon: "🌙" },
-            { label: "運動時間", value: `${current.exercise} 分`, icon: "🚶" },
-            { label: "今日の気分", value: current.mood || "未記録", icon: "🌷" },
-          ].map((item) => (
-            <div key={item.label} className="rounded-2xl border border-purple-100 bg-white p-4 shadow-sm">
-              <p className="text-2xl">{item.icon}</p>
-              <p className="mt-2 text-xs text-purple-400">{item.label}</p>
-              <p className="mt-1 font-bold text-purple-900">{item.value}</p>
-            </div>
-          ))}
-        </section>
-
-        <section className="rounded-3xl border border-purple-100 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-bold text-purple-900">
-            🌸 今日の健康記録
-          </h2>
-
-          <div className="mt-5 space-y-5">
+        {/* 達成率 */}
+        <section
+          style={{
+            ...cardStyle,
+            background: "linear-gradient(110deg, #fce8f2, #eee8ff)",
+            marginBottom: "24px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "10px",
+            }}
+          >
             <div>
-              <div className="flex justify-between">
-                <label className="font-medium">💧 水分補給</label>
-                <span className="text-sm text-purple-500">{current.water} 杯</span>
-              </div>
-              <div className="mt-2 flex items-center gap-3">
-                <button type="button" onClick={() => updateRecord({ water: Math.max(0, current.water - 1) })} className="rounded-xl bg-purple-100 px-4 py-2 text-purple-700">−</button>
-                <div className="flex-1 rounded-full bg-purple-50 py-2 text-center text-sm text-purple-500">
-                  今日の水分量を記録
+              <p style={{ margin: 0, color: "#947594", fontSize: "14px" }}>
+                TODAY'S HABIT
+              </p>
+              <h2 style={{ margin: "5px 0", fontSize: "21px" }}>
+                今日の習慣達成率
+              </h2>
+              <p style={{ margin: 0, color: "#8d7891" }}>
+                {completedCount} / {habits.length} 個の習慣を達成
+              </p>
+            </div>
+            <strong style={{ fontSize: "36px", color: "#a66f9b" }}>
+              {progress}%
+            </strong>
+          </div>
+
+          <div
+            style={{
+              height: "12px",
+              background: "#ffffffb8",
+              borderRadius: "20px",
+              marginTop: "16px",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                width: `${progress}%`,
+                height: "100%",
+                background: "linear-gradient(90deg, #e8a9c9, #bba8e8)",
+                borderRadius: "20px",
+                transition: "width 0.3s",
+              }}
+            />
+          </div>
+        </section>
+
+        {/* 今日の記録 */}
+        <section style={{ marginBottom: "30px" }}>
+          <div style={{ marginBottom: "15px" }}>
+            <p
+              style={{
+                color: "#b18aa9",
+                letterSpacing: "2px",
+                fontSize: "12px",
+                margin: 0,
+              }}
+            >
+              DAILY RECORD
+            </p>
+            <h2 style={{ fontSize: "23px", margin: "4px 0" }}>
+              今日の記録 <span style={{ color: "#d99cbd" }}>✿</span>
+            </h2>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+              gap: "16px",
+            }}
+          >
+            {/* 水分補給 */}
+            <section style={cardStyle}>
+              <h3 style={{ margin: "0 0 18px", fontSize: "18px" }}>
+                💧 水分補給
+              </h3>
+              <p style={{ color: "#9b849c", fontSize: "13px", margin: "0 0 8px" }}>
+                今日飲んだコップの数
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <strong style={{ fontSize: "30px", color: "#8d83c5" }}>
+                  {record.water}
+                  <span style={{ fontSize: "15px", marginLeft: "5px" }}>杯</span>
+                </strong>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    style={buttonStyle}
+                    onClick={() => updateRecord({ water: Math.max(0, record.water - 1) })}
+                  >
+                    −
+                  </button>
+                  <button
+                    style={{ ...buttonStyle, background: "#e9e3fa" }}
+                    onClick={() => updateRecord({ water: record.water + 1 })}
+                  >
+                    ＋
+                  </button>
                 </div>
-                <button type="button" onClick={() => updateRecord({ water: current.water + 1 })} className="rounded-xl bg-purple-500 px-4 py-2 text-white">＋</button>
               </div>
-            </div>
+            </section>
 
-            <div>
-              <label htmlFor="sleep" className="font-medium">🌙 睡眠時間</label>
-              <div className="mt-2 flex items-center gap-2">
-                <input id="sleep" type="number" min="0" max="24" step="0.5" value={current.sleep} onChange={(e) => updateRecord({ sleep: Math.min(24, Math.max(0, Number(e.target.value))) })} className="w-full rounded-xl border border-purple-100 p-3 outline-purple-300" />
-                <span>時間</span>
-              </div>
-            </div>
+            {/* 睡眠 */}
+            <section style={cardStyle}>
+              <h3 style={{ margin: "0 0 18px", fontSize: "18px" }}>
+                🌙 睡眠
+              </h3>
+              <label style={{ display: "block", fontSize: "13px", color: "#9b849c", marginBottom: "8px" }}>
+                睡眠時間（時間）
+              </label>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                max="24"
+                step="0.5"
+                placeholder="例：7.5"
+                value={record.sleep || ""}
+                onChange={(e) => updateRecord({ sleep: Number(e.target.value) })}
+              />
+            </section>
 
-            <div>
-              <p className="font-medium">😊 今日の気分</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {["😊", "🙂", "😐", "😴", "😔"].map((mood) => (
-                  <button key={mood} type="button" onClick={() => updateRecord({ mood })} className={`rounded-xl p-3 text-2xl ${current.mood === mood ? "bg-purple-200 ring-2 ring-purple-400" : "bg-purple-50"}`}>
-                    {mood}
+            {/* 気分 */}
+            <section style={cardStyle}>
+              <h3 style={{ margin: "0 0 18px", fontSize: "18px" }}>
+                🌷 今日の気分
+              </h3>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {moodOptions.map((mood) => (
+                  <button
+                    key={mood.value}
+                    onClick={() => updateRecord({ mood: mood.value })}
+                    style={{
+                      ...buttonStyle,
+                      flex: 1,
+                      minWidth: "85px",
+                      background: record.mood === mood.value ? "#e8d7f1" : "#fff5fa",
+                      border: record.mood === mood.value ? "2px solid #c49ac8" : "2px solid transparent",
+                    }}
+                  >
+                    {mood.emoji} {mood.value}
                   </button>
                 ))}
               </div>
-            </div>
+            </section>
 
-            <div>
-              <label htmlFor="exercise" className="font-medium">🚶 運動時間</label>
-              <div className="mt-2 flex items-center gap-2">
-                <input id="exercise" type="number" min="0" value={current.exercise} onChange={(e) => updateRecord({ exercise: Math.max(0, Number(e.target.value)) })} className="w-full rounded-xl border border-purple-100 p-3 outline-purple-300" />
-                <span>分</span>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="meal" className="font-medium">🍽️ 食事メモ</label>
-              <textarea id="meal" value={current.mealNote} onChange={(e) => updateRecord({ mealNote: e.target.value })} placeholder="今日食べたものや気づいたこと..." className="mt-2 w-full rounded-xl border border-purple-100 p-3 outline-purple-300" rows={3} />
-            </div>
+            {/* 運動 */}
+            <section style={cardStyle}>
+              <h3 style={{ margin: "0 0 18px", fontSize: "18px" }}>
+                🏃 運動
+              </h3>
+              <label style={{ display: "block", fontSize: "13px", color: "#9b849c", marginBottom: "8px" }}>
+                運動した時間（分）
+              </label>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                placeholder="例：30"
+                value={record.exercise || ""}
+                onChange={(e) => updateRecord({ exercise: Number(e.target.value) })}
+              />
+            </section>
           </div>
         </section>
 
-        <section className="rounded-3xl border border-purple-100 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-bold text-purple-900">♡ 健康習慣リスト</h2>
+        {/* 食事メモ */}
+        <section style={{ ...cardStyle, marginBottom: "30px" }}>
+          <h3 style={{ margin: "0 0 12px", fontSize: "18px" }}>
+            🍰 食事のメモ
+          </h3>
+          <p style={{ color: "#9b849c", fontSize: "13px", margin: "0 0 10px" }}>
+            今日食べたものや、気づいたことを書いてみよう。
+          </p>
+          <textarea
+            style={{ ...inputStyle, minHeight: "100px", resize: "vertical" }}
+            placeholder="今日のごはんや感想を自由に記録..."
+            value={record.mealNote}
+            onChange={(e) => updateRecord({ mealNote: e.target.value })}
+          />
+        </section>
 
-          <div className="mt-4">
-            <div className="flex justify-between text-sm">
-              <span>今日の達成率</span>
-              <span className="font-bold text-purple-600">{progress}%</span>
-            </div>
-            <div className="mt-2 h-3 overflow-hidden rounded-full bg-purple-100">
-              <div className="h-full rounded-full bg-purple-400 transition-all" style={{ width: `${progress}%` }} />
-            </div>
-            <p className="mt-2 text-xs text-purple-400">{completed} / {todos.length} 件完了</p>
+        {/* 習慣リスト */}
+        <section style={{ marginBottom: "30px" }}>
+          <div style={{ marginBottom: "15px" }}>
+            <p style={{ color: "#b18aa9", letterSpacing: "2px", fontSize: "12px", margin: 0 }}>
+              MY LITTLE HABITS
+            </p>
+            <h2 style={{ fontSize: "23px", margin: "4px 0" }}>
+              毎日の習慣 <span style={{ color: "#d99cbd" }}>♡</span>
+            </h2>
           </div>
 
-          <form onSubmit={addHabit} className="mt-5 space-y-3">
-            <input value={newName} onChange={(e) => setNewName(e.target.value)} minLength={2} maxLength={32} required placeholder="新しい健康習慣を入力..." className="w-full rounded-xl border border-purple-100 p-3 outline-purple-300" />
-            <div className="flex flex-wrap gap-2">
-              <select value={newCategory} onChange={(e) => setNewCategory(e.target.value as HabitCategory)} className="flex-1 rounded-xl border border-purple-100 p-3">
-                <option value="生活習慣">生活習慣</option>
-                <option value="運動">運動</option>
-                <option value="食事">食事</option>
-                <option value="その他">その他</option>
+          <section style={cardStyle}>
+            <form
+              onSubmit={addHabit}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) minmax(120px, 150px) auto",
+                gap: "10px",
+                marginBottom: "20px",
+              }}
+            >
+              <input
+                style={inputStyle}
+                value={habitName}
+                onChange={(e) => setHabitName(e.target.value)}
+                placeholder="新しい習慣を入力..."
+                minLength={2}
+                maxLength={32}
+              />
+              <select
+                style={inputStyle}
+                value={category}
+                onChange={(e) => setCategory(e.target.value as HabitCategory)}
+              >
+                {categories.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
               </select>
-              <button type="submit" className="rounded-xl bg-purple-500 px-5 py-3 font-bold text-white hover:bg-purple-600">
+              <button
+                type="submit"
+                style={{ ...buttonStyle, background: "#d9c5eb", color: "#624d70" }}
+              >
                 ＋ 追加
               </button>
-            </div>
-          </form>
+            </form>
 
-          <div className="mt-5">
-            <TodoList todos={todos} updateIsDone={updateIsDone} remove={remove} />
-          </div>
-        </section>
+            <div style={{ display: "grid", gap: "10px" }}>
+              {habits.length === 0 && (
+                <p style={{ textAlign: "center", color: "#a58da5" }}>
+                  まだ習慣がありません。新しい習慣を追加してみよう！
+                </p>
+              )}
 
-        <section className="rounded-3xl border border-purple-100 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-bold text-purple-900">📊 1週間の記録</h2>
-          <p className="mt-1 text-xs text-purple-400">毎日の水分補給の記録</p>
-          <div className="mt-5 flex h-40 items-end justify-around gap-2">
-            {lastSevenDays.map((day) => {
-              const amount = records[day.date]?.water || 0;
-              const height = Math.min(100, amount * 12);
-              return (
-                <div key={day.date} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
-                  <span className="text-xs text-purple-500">{amount}</span>
-                  <div className="flex h-28 w-full items-end justify-center">
-                    <div className="w-full max-w-8 rounded-t-xl bg-purple-300" style={{ height: `${height}%` }} />
+              {habits.map((habit) => (
+                <div
+                  key={habit.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "13px",
+                    borderRadius: "14px",
+                    background: habit.isDone ? "#f7f0fa" : "#fff9fc",
+                    border: "1px solid #f1e5ef",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={habit.isDone}
+                    onChange={() => toggleHabit(habit.id)}
+                    style={{ width: "19px", height: "19px", accentColor: "#c18db5" }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontWeight: 600,
+                        textDecoration: habit.isDone ? "line-through" : "none",
+                        color: habit.isDone ? "#ad9eaf" : "#594b5d",
+                      }}
+                    >
+                      {habit.name}
+                    </div>
+                    <span style={{ fontSize: "12px", color: "#a68ca5" }}>
+                      {habit.category || "その他"}
+                    </span>
                   </div>
-                  <span className="text-xs text-purple-400">{day.label}</span>
+                  <button
+                    onClick={() => deleteHabit(habit.id)}
+                    style={{ ...buttonStyle, padding: "7px 10px", background: "#fff0f3", color: "#b47d91" }}
+                    aria-label={`${habit.name}を削除`}
+                  >
+                    削除
+                  </button>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          </section>
         </section>
 
-        <footer className="pb-4 text-center text-xs text-purple-400">
-          Wellness Note ♡ Take care of yourself.
-        </footer>
+        {/* 7日間の水分グラフ */}
+        <section style={{ marginBottom: "30px" }}>
+          <div style={{ marginBottom: "15px" }}>
+            <p style={{ color: "#b18aa9", letterSpacing: "2px", fontSize: "12px", margin: 0 }}>
+              WEEKLY TRACKER
+            </p>
+            <h2 style={{ fontSize: "23px", margin: "4px 0" }}>
+              7日間の水分記録 💧
+            </h2>
+          </div>
 
-      </div>
-    </main>
+          <section style={cardStyle}>
+            <p style={{ color: "#9b849c", fontSize: "13px", marginTop: 0 }}>
+              1日に飲んだコップの数
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+                gap: "10px",
+                alignItems: "end",
+                height: "180px",
+                paddingTop: "10px",
+              }}
+            >
+              {weekData.map((day) => (
+                <div
+                  key={day.label}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "end",
+                    height: "100%",
+                    gap: "7px",
+                    minWidth: 0,
+                  }}
+                >
+                  <span style={{ fontSize: "12px", color: "#9b849c" }}>
+                    {day.water}
+                  </span>
+                  <div
+                    style={{
+                      width: "min(100%, 38px)",
+                      height: `${Math.max(5, (day.water / maxWater) * 105)}px`,
+                      background: "linear-gradient(180deg, #c7b7ed, #e8b7d3)",
+                      borderRadius: "10px 10px 4px 4px",
+                    }}
+                  />
+                  <span style={{ fontSize: "11px", color: "#9b849c" }}>
+                    {day.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </section>
+
+        <footer style={{ textAlign: "center", color: "#b49bb3", fontSize: "13px", padding: "15px" }}>
+          Made with ♡ Wellness Note
+          <p style={{ margin: "5px 0" }}>自分のペースで、少しずつ。</p>
+        </footer>
+      </main>
+    </div>
   );
 };
 
