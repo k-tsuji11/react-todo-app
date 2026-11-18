@@ -9,7 +9,6 @@ type Props = {
 
 const TodoList = (props: Props) => {
   const todos = props.todos;
-
   if (todos.length === 0) {
     return (
       <div className="text-red-500">
