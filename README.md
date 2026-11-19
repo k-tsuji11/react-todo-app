@@ -64,16 +64,16 @@
 ![ホーム画面](home.png)
 
 ### 2. 毎日の健康記録
-![健康記録](./screenshots/record.png)
+![健康記録](record.png)
 
 ### 3. 習慣管理
-![習慣管理](./screenshots/habits.png)
+![習慣管理](habits.png)
 
 ### 4. 週間グラフ
-![週間グラフ](./screenshots/weekly.png)
+![週間グラフ](weekly.png)
 
 ### 5. 過去の記録
-![過去の記録](./screenshots/mobile.png)
+![過去の記録](mobile.png)
 
 ## ✿ Future Improvements
 
