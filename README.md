@@ -2,7 +2,7 @@
 
 毎日の小さな習慣を記録して、自分の生活をもっと大切にするためのウェルネス記録アプリです。
 
-**🌷 公開サイト：** [Wellness Note を開く](https://k-tsuji11.github.io/react-todo-app/)　　セキュリティエラーが出ます。
+**🌷 公開サイト：** [Wellness Note を開く](https://k-tsuji11.github.io/react-todo-app/)　　
 
 ---
 
