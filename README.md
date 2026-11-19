@@ -73,7 +73,7 @@
 ![週間グラフ](weekly.png)
 
 ### 5. 過去の記録
-![過去の記録](mobile.png)
+![過去の記録](bobile.png)
 
 ## ✿ Future Improvements
 
