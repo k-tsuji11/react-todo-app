@@ -72,8 +72,8 @@
 ### 4. 週間グラフ
 ![週間グラフ](./screenshots/weekly.png)
 
-### 5. スマートフォン表示
-![スマートフォン表示](./screenshots/mobile.png)
+### 5. 過去の記録
+![過去の記録](./screenshots/mobile.png)
 
 ## ✿ Future Improvements
 
