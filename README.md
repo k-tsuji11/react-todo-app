@@ -1,75 +1,92 @@
-# React + TypeScript + Vite
+# Wellness Note ♡
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+毎日の小さな習慣を記録して、自分の生活をもっと大切にするためのウェルネス記録アプリです。
 
-Currently, two official plugins are available:
+**🌷 公開サイト：** [Wellness Note を開く](ここにGitHub-PagesのURL)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## ✿ Concept
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+「毎日を頑張る自分の変化を、楽しく記録したい」
 
-## Expanding the ESLint configuration
+健康管理や習慣づくりは、継続することが大切です。しかし、一般的な管理アプリは機能が多く、入力が面倒に感じることもあります。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+そこで、毎日の記録を簡単に入力でき、かわいいデザインで楽しく続けられるアプリを目指して開発しました。
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+ピンクやラベンダーを基調とした、やわらかく親しみやすいデザインが特徴です。
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## ✿ Main Features
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. 毎日の健康記録
+- 水分補給：飲んだコップの数を記録
+- 睡眠：睡眠時間を記録
+- 気分：その日の気分を選択
+- 運動：運動した時間を記録
+- 食事メモ：食べたものや感想を自由に入力
 
-```
+### 2. 習慣管理
+- 自分だけの習慣を追加
+- 習慣のカテゴリーを設定
+- チェックボックスで達成状況を管理
+- 不要になった習慣を削除
+- 今日の習慣達成率を表示
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+### 3. 週間グラフ
+- 過去7日間の水分補給量をグラフで表示
+- 日ごとの記録を視覚的に比較
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 4. データ保存
+- LocalStorageを使用
+- ページを再読み込みしても記録を保持
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## ✿ Design & UI/UX
 
-```
+- ピンク・ラベンダーを中心とした配色
+- 丸みのあるカードデザイン
+- 見やすく整理された入力フォーム
+- スマートフォンでも使いやすいレイアウト
+- シンプルな操作で記録できる設計
+
+## ✿ Technologies
+
+| 技術 | 用途 |
+|---|---|
+| React | UIの構築 |
+| TypeScript | 型安全な開発 |
+| CSS / Inline Styles | デザイン・レイアウト |
+| LocalStorage | データの保存 |
+| UUID | データの識別 |
+
+## ✿ Screenshots
+
+### 1. ホーム画面
+![ホーム画面](./screenshots/home.png)
+
+### 2. 毎日の健康記録
+![健康記録](./screenshots/record.png)
+
+### 3. 習慣管理
+![習慣管理](./screenshots/habits.png)
+
+### 4. 週間グラフ
+![週間グラフ](./screenshots/weekly.png)
+
+### 5. スマートフォン表示
+![スマートフォン表示](./screenshots/mobile.png)
+
+## ✿ Future Improvements
+
+- 過去の記録を日付ごとに一覧表示
+- 1週間・1か月単位の記録集計
+- 睡眠時間や運動時間の推移をグラフ化
+- 過去の記録の編集・確認機能
+- データのバックアップ・復元機能
+
+## ✿ Developer
+
+個人開発
+
+## ✿ Development Period
+
+開発期間：2026.10.xx ～ 2026.11.xx（約XXX時間）
