@@ -61,7 +61,7 @@
 ## ✿ Screenshots
 
 ### 1. ホーム画面
-![ホーム画面](./screenshots/home.png)
+![ホーム画面](home.png)
 
 ### 2. 毎日の健康記録
 ![健康記録](./screenshots/record.png)
